@@ -764,6 +764,159 @@
       font-style: italic;
     }
 
+    /* Shiny Toggle & Cry Button */
+    .pokemon-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 12px;
+    }
+
+    .action-btn {
+      padding: 8px 16px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 20px;
+      background: rgba(255,255,255,0.08);
+      color: #ccc;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .action-btn:hover {
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+    }
+
+    .action-btn.shiny-active {
+      background: rgba(255, 215, 0, 0.2);
+      border-color: rgba(255, 215, 0, 0.5);
+      color: #ffd93d;
+    }
+
+    .action-btn .btn-icon {
+      font-size: 1.1rem;
+    }
+
+    /* Size Comparison */
+    .size-section {
+      display: none;
+      background: rgba(15, 20, 35, 0.92);
+      border-radius: 16px;
+      padding: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+      margin-bottom: 20px;
+      animation: fadeUp 0.4s ease 0.05s both;
+    }
+
+    .size-section h3 {
+      font-size: 0.85rem;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .size-compare {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 30px;
+      padding: 10px 0 0;
+      min-height: 180px;
+      flex-wrap: wrap;
+    }
+
+    .size-figure {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .size-figure .figure-visual {
+      flex: 1;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .size-figure .figure-img {
+      max-width: 100px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .size-figure .figure-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      margin-top: 6px;
+      text-transform: capitalize;
+    }
+
+    .size-figure .figure-height {
+      font-size: 0.7rem;
+      color: #888;
+    }
+
+    .size-ruler {
+      width: 2px;
+      background: rgba(255,255,255,0.15);
+      flex-shrink: 0;
+    }
+
+    /* Moves Section */
+    .moves-section {
+      padding: 0 20px 20px;
+    }
+
+    .moves-section h3 {
+      font-size: 0.85rem;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+
+    .move-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 10px;
+      margin-bottom: 6px;
+    }
+
+    .move-card .move-type {
+      font-size: 0.65rem;
+      padding: 3px 8px;
+      border-radius: 10px;
+      font-weight: 700;
+      text-transform: capitalize;
+      color: #fff;
+      white-space: nowrap;
+    }
+
+    .move-card .move-name {
+      flex: 1;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+
+    .move-card .move-info {
+      font-size: 0.7rem;
+      color: #888;
+      text-align: right;
+      white-space: nowrap;
+    }
+
     /* Error */
     .error-msg {
       display: none;
@@ -832,6 +985,10 @@
         <div class="poke-id" id="pokeId"></div>
         <h2 id="pokemonName"></h2>
         <div class="type-badges" id="typeBadges"></div>
+        <div class="pokemon-actions">
+          <button class="action-btn" id="shinyToggle"><span class="btn-icon">✨</span> Shiny</button>
+          <button class="action-btn" id="cryBtn"><span class="btn-icon">🔊</span> Cry</button>
+        </div>
       </div>
 
       <div class="flavor-text" id="flavorText"></div>
@@ -856,10 +1013,21 @@
         <div id="abilitiesList"></div>
       </div>
 
+      <div class="moves-section" id="movesSection" style="display:none;">
+        <h3>Signature Moves</h3>
+        <div id="movesList"></div>
+      </div>
+
       <div class="pokemon-stats">
         <h3>Base Stats</h3>
         <div id="statsContainer"></div>
       </div>
+    </div>
+
+    <!-- Size Comparison -->
+    <div class="size-section" id="sizeSection">
+      <h3>Size vs Leo</h3>
+      <div class="size-compare" id="sizeCompare"></div>
     </div>
 
     <!-- Evolution -->
@@ -959,6 +1127,7 @@
       pokemonInfo.style.display = 'none';
       evolutionSection.style.display = 'none';
       document.getElementById('formsSection').style.display = 'none';
+      document.getElementById('sizeSection').style.display = 'none';
       errorMsg.style.display = 'none';
       applyTypeBackground(null);
     }
@@ -1368,11 +1537,187 @@
       }));
     }
 
+    // --- Shiny Toggle State ---
+    let currentPokemonData = null;
+    let isShiny = false;
+
+    function updatePokemonImage() {
+      if (!currentPokemonData) return;
+      const img = document.getElementById('pokemonImg');
+      const d = currentPokemonData;
+      if (isShiny) {
+        img.src = d.sprites.other['official-artwork'].front_shiny
+          || d.sprites.front_shiny
+          || d.sprites.other['official-artwork'].front_default
+          || d.sprites.front_default;
+      } else {
+        img.src = d.sprites.other['official-artwork'].front_default || d.sprites.front_default;
+      }
+      const btn = document.getElementById('shinyToggle');
+      btn.classList.toggle('shiny-active', isShiny);
+    }
+
+    // --- Pokemon Cry ---
+    let cryAudio = null;
+
+    function playCry(pokemonId) {
+      if (cryAudio) { cryAudio.pause(); cryAudio = null; }
+      // PokeAPI has cries at pokemon endpoint; also available via GitHub
+      const cryUrl = `https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/${pokemonId}.ogg`;
+      cryAudio = new Audio(cryUrl);
+      cryAudio.volume = 0.5;
+      cryAudio.play().catch(() => {
+        // Fallback to legacy cries
+        const legacyUrl = `https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/legacy/${pokemonId}.ogg`;
+        cryAudio = new Audio(legacyUrl);
+        cryAudio.volume = 0.5;
+        cryAudio.play().catch(() => console.warn('Could not play cry'));
+      });
+    }
+
+    // --- Size Comparison ---
+    const LEO_HEIGHT_CM = 126;
+
+    function renderSizeComparison(pokemonData) {
+      const pokemonHeightCm = pokemonData.height * 10; // API gives decimetres
+      const container = document.getElementById('sizeCompare');
+      const section = document.getElementById('sizeSection');
+
+      const pokemonArt = pokemonData.sprites.other['official-artwork'].front_default || pokemonData.sprites.front_default;
+
+      // How many Leos to match the Pokemon height?
+      const leosNeeded = pokemonHeightCm / LEO_HEIGHT_CM;
+
+      // CORRECT SCALING: both use the same px-per-cm ratio
+      // The tallest thing sets the max display height
+      const maxDisplayPx = 200;
+      const tallestCm = Math.max(pokemonHeightCm, LEO_HEIGHT_CM);
+      const pxPerCm = maxDisplayPx / tallestCm;
+
+      const pokePx = Math.max(20, Math.round(pokemonHeightCm * pxPerCm));
+      const leoPx = Math.max(20, Math.round(LEO_HEIGHT_CM * pxPerCm));
+
+      // Leo silhouette
+      const leoSvg = `<svg viewBox="0 0 60 150" style="height:${leoPx}px;width:auto;display:block;" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="30" cy="12" r="11" fill="rgba(255,255,255,0.3)"/>
+        <path d="M30 23 C18 23 14 35 14 45 L14 48 L22 48 L22 65 C22 65 20 67 20 70 L20 105 C20 110 23 112 25 112 C27 112 28 110 28 107 L28 75 L32 75 L32 107 C32 110 33 112 35 112 C37 112 40 110 40 105 L40 70 C40 67 38 65 38 65 L38 48 L46 48 L46 45 C46 35 42 23 30 23Z" fill="rgba(255,255,255,0.3)"/>
+      </svg>`;
+
+      // Comparison text
+      let compareText = '';
+      if (leosNeeded >= 2) {
+        compareText = `It would take <span style="color:#ff6b6b;font-weight:700;">${leosNeeded.toFixed(1)} Leos</span> stacked up to match ${pokemonData.name}!`;
+      } else if (leosNeeded > 1.05) {
+        compareText = `${pokemonData.name} is a bit taller — <span style="color:#ff6b6b;font-weight:700;">${leosNeeded.toFixed(1)} Leos</span> to match it`;
+      } else if (leosNeeded >= 0.95) {
+        compareText = `${pokemonData.name} is about the <span style="color:#ffd93d;font-weight:700;">same size</span> as Leo!`;
+      } else {
+        compareText = `Leo is bigger! ${pokemonData.name} is only <span style="color:#6bcb77;font-weight:700;">${(leosNeeded * 100).toFixed(0)}%</span> of Leo's height`;
+      }
+
+      // Both figures share the same visual area height so they bottom-align correctly
+      const areaHeight = maxDisplayPx + 5;
+
+      container.innerHTML = `
+        <div class="size-figure">
+          <div class="figure-visual" style="height:${areaHeight}px;">
+            <img class="figure-img" src="${pokemonArt}" alt="${pokemonData.name}" style="height:${pokePx}px;width:auto;max-width:150px;" />
+          </div>
+          <div class="figure-label">${pokemonData.name}</div>
+          <div class="figure-height">${pokemonHeightCm} cm</div>
+        </div>
+        <div class="size-ruler" style="height:${areaHeight}px;"></div>
+        <div class="size-figure">
+          <div class="figure-visual" style="height:${areaHeight}px;">
+            ${leoSvg}
+          </div>
+          <div class="figure-label">Leo</div>
+          <div class="figure-height">${LEO_HEIGHT_CM} cm</div>
+        </div>
+        <div style="text-align:center;font-size:0.85rem;color:#ccc;margin-top:12px;text-transform:capitalize;width:100%;">
+          ${compareText}
+        </div>
+      `;
+
+      section.style.display = 'block';
+    }
+
+    // --- Signature Moves ---
+    async function fetchAndRenderMoves(pokemonData) {
+      const movesSection = document.getElementById('movesSection');
+      const movesList = document.getElementById('movesList');
+      movesList.innerHTML = '';
+
+      // Get moves learned by level-up, sorted by level descending (signature = high level)
+      const levelMoves = pokemonData.moves
+        .map(m => {
+          const levelDetail = m.version_group_details.find(d => d.move_learn_method.name === 'level-up');
+          return levelDetail ? { name: m.move.name, url: m.move.url, level: levelDetail.level_learned_at } : null;
+        })
+        .filter(Boolean)
+        .sort((a, b) => b.level - a.level);
+
+      // Take top 4 highest-level moves (these tend to be signature/strongest)
+      const topMoves = levelMoves.slice(0, 4);
+      if (topMoves.length === 0) {
+        movesSection.style.display = 'none';
+        return;
+      }
+
+      // Fetch move details in parallel
+      const moveDetails = await Promise.allSettled(topMoves.map(async m => {
+        try {
+          const res = await fetch(m.url);
+          if (!res.ok) return null;
+          const moveData = await res.json();
+          return {
+            name: m.name.replace(/-/g, ' '),
+            type: moveData.type.name,
+            power: moveData.power,
+            accuracy: moveData.accuracy,
+            pp: moveData.pp,
+            damageClass: moveData.damage_class.name,
+            level: m.level
+          };
+        } catch (e) { return null; }
+      }));
+
+      const validMoves = moveDetails
+        .filter(r => r.status === 'fulfilled' && r.value)
+        .map(r => r.value);
+
+      if (validMoves.length === 0) {
+        movesSection.style.display = 'none';
+        return;
+      }
+
+      movesList.innerHTML = validMoves.map(m => `
+        <div class="move-card">
+          <span class="move-type type-${m.type}" style="display:inline-flex;align-items:center;gap:3px;">
+            ${getTypeSymbol(m.type).replace('class="type-symbol"', 'class="type-symbol" style="width:14px;height:14px;margin:0;"')}
+            ${m.type}
+          </span>
+          <span class="move-name">${m.name}</span>
+          <span class="move-info">
+            ${m.power ? `${m.power} pwr` : '—'}${m.accuracy ? ` · ${m.accuracy}%` : ''}<br/>
+            <span style="font-size:0.6rem;color:#666;">${m.damageClass} · Lv ${m.level}</span>
+          </span>
+        </div>
+      `).join('');
+
+      movesSection.style.display = 'block';
+    }
+
     function renderPokemon(data, speciesData) {
+      // Store data for shiny toggle
+      currentPokemonData = data;
+      isShiny = false;
+
       // Image
       const img = document.getElementById('pokemonImg');
       img.src = data.sprites.other['official-artwork'].front_default || data.sprites.front_default;
       img.alt = data.name;
+      document.getElementById('shinyToggle').classList.remove('shiny-active');
 
       // Name & ID
       document.getElementById('pokemonName').textContent = data.name;
@@ -1445,6 +1790,42 @@
       else if (fameScore >= 20) fameTitle = 'Familiar';
       else fameTitle = 'Obscure';
 
+      // Rarity score calculation
+      // Catch rate: 255 = super common (Magikarp), 3 = ultra rare (legendaries)
+      const catchRate = speciesData.capture_rate || 255;
+      let rarityScore = 0;
+
+      // Catch rate is the biggest factor (inverted — lower catch = rarer)
+      rarityScore += Math.round((1 - catchRate / 255) * 50); // up to 50 pts
+
+      // Legendary/Mythical bonus
+      if (isMythical) rarityScore += 30;
+      else if (isLegendary) rarityScore += 25;
+
+      // Baby Pokemon are somewhat rare
+      if (isBaby) rarityScore += 10;
+
+      // Low base happiness often = harder to find
+      if (baseHappiness !== '—' && baseHappiness < 50) rarityScore += 5;
+
+      // Growth rate: slow/erratic growth usually means rarer
+      const rareGrowth = ['slow', 'medium slow', 'erratic'];
+      if (rareGrowth.includes(growthRate)) rarityScore += 5;
+
+      // Genderless Pokemon tend to be rarer
+      if (speciesData.gender_rate === -1) rarityScore += 5;
+
+      rarityScore = Math.min(Math.round(rarityScore), 100);
+
+      let rarityTitle = 'Common';
+      let rarityColor = '#78c850'; // green
+      if (rarityScore >= 85) { rarityTitle = 'Ultra Rare'; rarityColor = '#ffd93d'; }
+      else if (rarityScore >= 70) { rarityTitle = 'Very Rare'; rarityColor = '#f85888'; }
+      else if (rarityScore >= 50) { rarityTitle = 'Rare'; rarityColor = '#a040a0'; }
+      else if (rarityScore >= 30) { rarityTitle = 'Uncommon'; rarityColor = '#6890f0'; }
+
+      const rarityDiamonds = rarityScore >= 85 ? '◆◆◆◆◆' : rarityScore >= 70 ? '◆◆◆◆◇' : rarityScore >= 50 ? '◆◆◆◇◇' : rarityScore >= 30 ? '◆◆◇◇◇' : '◆◇◇◇◇';
+
       document.getElementById('aboutGrid').innerHTML = `
         <div class="info-item"><div class="label">Category</div><div class="value">${genus ? genus.genus : '—'}</div></div>
         <div class="info-item"><div class="label">Generation</div><div class="value">${generation}</div></div>
@@ -1466,6 +1847,15 @@
           </div>
           <div class="fame-stars">${stars}</div>
           <div style="font-size:0.65rem;color:#666;margin-top:2px;">In ${gameAppearances} games · ${numPokedexes} regional dexes · ${numForms} form${numForms !== 1 ? 's' : ''}</div>
+        </div>
+        <div class="info-item full-width">
+          <div class="label">Rarity — <span style="color:${rarityColor};font-weight:700;">${rarityTitle}</span></div>
+          <div class="fame-meter">
+            <div class="fame-bar-bg"><div class="fame-bar" style="width:${rarityScore}%;background:linear-gradient(90deg, ${rarityColor}, #fff);"></div></div>
+            <div class="fame-label">${rarityScore}</div>
+          </div>
+          <div class="fame-stars" style="color:${rarityColor};">${rarityDiamonds}</div>
+          <div style="font-size:0.65rem;color:#666;margin-top:2px;">Catch rate: ${catchRate}/255${isLegendary ? ' · Legendary' : ''}${isMythical ? ' · Mythical' : ''}${isBaby ? ' · Baby' : ''}</div>
         </div>
       `;
 
@@ -1615,6 +2005,8 @@
       pokemonInfo.style.display = 'none';
       evolutionSection.style.display = 'none';
       document.getElementById('formsSection').style.display = 'none';
+      document.getElementById('sizeSection').style.display = 'none';
+      document.getElementById('movesSection').style.display = 'none';
 
       let data, speciesData;
       try {
@@ -1628,6 +2020,15 @@
       }
 
       renderPokemon(data, speciesData);
+      renderSizeComparison(data);
+
+      // Moves — load independently
+      try {
+        showStatus('Loading moves...');
+        await fetchAndRenderMoves(data);
+      } catch (err) {
+        console.warn('Moves failed to load:', err);
+      }
 
       // Evolution chain — render immediately, then enrich with types
       if (speciesData.evolution_chain) {
@@ -1668,6 +2069,18 @@
     function hideStatus() {
       statusBar.classList.remove('active');
     }
+
+    // --- Shiny & Cry Events ---
+    document.getElementById('shinyToggle').addEventListener('click', () => {
+      isShiny = !isShiny;
+      updatePokemonImage();
+    });
+
+    document.getElementById('cryBtn').addEventListener('click', () => {
+      if (currentPokemonData) {
+        playCry(currentPokemonData.id);
+      }
+    });
 
     // --- Events ---
     captureBtn.addEventListener('click', async () => {
