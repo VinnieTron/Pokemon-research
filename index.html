@@ -204,6 +204,48 @@
       border-color: #ffd93d;
     }
 
+    .search-wrapper {
+      position: relative;
+      flex: 1;
+    }
+
+    .search-wrapper input {
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .search-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: rgba(15, 20, 35, 0.97);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-top: none;
+      border-radius: 0 0 10px 10px;
+      list-style: none;
+      margin: 0;
+      padding: 4px 0;
+      max-height: 220px;
+      overflow-y: auto;
+      z-index: 1000;
+      display: none;
+    }
+
+    .search-dropdown li {
+      padding: 8px 14px;
+      cursor: pointer;
+      text-transform: capitalize;
+      color: #ddd;
+      font-size: 0.95rem;
+    }
+
+    .search-dropdown li:hover,
+    .search-dropdown li.active {
+      background: rgba(255, 217, 61, 0.15);
+      color: #ffd93d;
+    }
+
     .btn-search {
       background: linear-gradient(135deg, #6bcb77, #36a85c);
       color: white;
@@ -964,7 +1006,11 @@
     <div class="name-edit-section" id="nameEditSection" style="display:block;">
       <label>Search for a Pokemon</label>
       <div class="name-edit-row">
-        <input type="text" id="pokemonNameInput" placeholder="e.g. Charizard" />
+        <div class="search-wrapper">
+          <input type="text" id="pokemonNameInput" placeholder="e.g. Charizard"
+            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+          <ul id="searchDropdown" class="search-dropdown"></ul>
+        </div>
         <button class="btn btn-search" id="searchBtn">Search</button>
       </div>
     </div>
@@ -2106,11 +2152,112 @@
       if (name) lookupPokemon(name);
     });
 
-    pokemonNameInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        const name = pokemonNameInput.value.trim();
-        if (name) lookupPokemon(name);
+    // --- Search Autocomplete ---
+    const searchDropdown = document.getElementById('searchDropdown');
+    let dropdownActiveIndex = -1;
+    let preventDropdownClose = false;
+
+    function showDropdown(items) {
+      searchDropdown.innerHTML = '';
+      dropdownActiveIndex = -1;
+      if (!items.length) {
+        searchDropdown.style.display = 'none';
+        return;
       }
+      items.forEach((name) => {
+        const li = document.createElement('li');
+        li.textContent = name;
+        // touchstart fires before blur on iOS — set flag and handle selection on touchend
+        li.addEventListener('touchstart', () => {
+          preventDropdownClose = true;
+        }, { passive: true });
+        li.addEventListener('touchend', (e) => {
+          e.preventDefault();
+          preventDropdownClose = false;
+          pokemonNameInput.value = name;
+          closeDropdown();
+          lookupPokemon(name);
+        });
+        // mousedown + preventDefault keeps desktop working (prevents blur before click)
+        li.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          pokemonNameInput.value = name;
+          closeDropdown();
+          lookupPokemon(name);
+        });
+        searchDropdown.appendChild(li);
+      });
+      searchDropdown.style.display = 'block';
+    }
+
+    function closeDropdown() {
+      searchDropdown.style.display = 'none';
+      searchDropdown.innerHTML = '';
+      dropdownActiveIndex = -1;
+    }
+
+    function setActiveItem(index) {
+      const items = searchDropdown.querySelectorAll('li');
+      items.forEach((li, i) => li.classList.toggle('active', i === index));
+      if (index >= 0 && items[index]) {
+        items[index].scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    pokemonNameInput.addEventListener('input', async () => {
+      const query = pokemonNameInput.value.trim().toLowerCase();
+      if (!query) {
+        closeDropdown();
+        return;
+      }
+      // Retry name load if it failed on init (common on slow mobile connections)
+      if (!allPokemonNames.length) {
+        await loadPokemonNames();
+      }
+      if (!allPokemonNames.length) {
+        closeDropdown();
+        return;
+      }
+      const matches = allPokemonNames
+        .filter(name => name.startsWith(query))
+        .slice(0, 8);
+      showDropdown(matches);
+    });
+
+    pokemonNameInput.addEventListener('keydown', (e) => {
+      const items = searchDropdown.querySelectorAll('li');
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        dropdownActiveIndex = Math.min(dropdownActiveIndex + 1, items.length - 1);
+        setActiveItem(dropdownActiveIndex);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        dropdownActiveIndex = Math.max(dropdownActiveIndex - 1, -1);
+        setActiveItem(dropdownActiveIndex);
+      } else if (e.key === 'Enter') {
+        if (dropdownActiveIndex >= 0 && items[dropdownActiveIndex]) {
+          const name = items[dropdownActiveIndex].textContent;
+          pokemonNameInput.value = name;
+          closeDropdown();
+          lookupPokemon(name);
+        } else {
+          const name = pokemonNameInput.value.trim();
+          if (name) {
+            closeDropdown();
+            lookupPokemon(name);
+          }
+        }
+      } else if (e.key === 'Escape') {
+        closeDropdown();
+      }
+    });
+
+    pokemonNameInput.addEventListener('blur', () => {
+      if (preventDropdownClose) {
+        preventDropdownClose = false;
+        return;
+      }
+      setTimeout(closeDropdown, 150);
     });
 
     // --- Random by Type Grid ---
