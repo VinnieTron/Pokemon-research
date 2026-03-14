@@ -1007,7 +1007,8 @@
       <label>Search for a Pokemon</label>
       <div class="name-edit-row">
         <div class="search-wrapper">
-          <input type="text" id="pokemonNameInput" placeholder="e.g. Charizard" />
+          <input type="text" id="pokemonNameInput" placeholder="e.g. Charizard"
+            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
           <ul id="searchDropdown" class="search-dropdown"></ul>
         </div>
         <button class="btn btn-search" id="searchBtn">Search</button>
@@ -2203,9 +2204,17 @@
       }
     }
 
-    pokemonNameInput.addEventListener('input', () => {
+    pokemonNameInput.addEventListener('input', async () => {
       const query = pokemonNameInput.value.trim().toLowerCase();
-      if (!query || !allPokemonNames.length) {
+      if (!query) {
+        closeDropdown();
+        return;
+      }
+      // Retry name load if it failed on init (common on slow mobile connections)
+      if (!allPokemonNames.length) {
+        await loadPokemonNames();
+      }
+      if (!allPokemonNames.length) {
         closeDropdown();
         return;
       }
