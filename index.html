@@ -2154,6 +2154,7 @@
     // --- Search Autocomplete ---
     const searchDropdown = document.getElementById('searchDropdown');
     let dropdownActiveIndex = -1;
+    let preventDropdownClose = false;
 
     function showDropdown(items) {
       searchDropdown.innerHTML = '';
@@ -2162,11 +2163,23 @@
         searchDropdown.style.display = 'none';
         return;
       }
-      items.forEach((name, i) => {
+      items.forEach((name) => {
         const li = document.createElement('li');
         li.textContent = name;
+        // touchstart fires before blur on iOS — set flag and handle selection on touchend
+        li.addEventListener('touchstart', () => {
+          preventDropdownClose = true;
+        }, { passive: true });
+        li.addEventListener('touchend', (e) => {
+          e.preventDefault();
+          preventDropdownClose = false;
+          pokemonNameInput.value = name;
+          closeDropdown();
+          lookupPokemon(name);
+        });
+        // mousedown + preventDefault keeps desktop working (prevents blur before click)
         li.addEventListener('mousedown', (e) => {
-          e.preventDefault(); // prevent input blur before click registers
+          e.preventDefault();
           pokemonNameInput.value = name;
           closeDropdown();
           lookupPokemon(name);
@@ -2231,7 +2244,10 @@
     });
 
     pokemonNameInput.addEventListener('blur', () => {
-      // Delay to allow mousedown on dropdown items to fire first
+      if (preventDropdownClose) {
+        preventDropdownClose = false;
+        return;
+      }
       setTimeout(closeDropdown, 150);
     });
 
